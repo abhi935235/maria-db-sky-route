@@ -1,0 +1,125 @@
+version: "3.9"
+
+name: mariadb-openflights
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    container_name: mariadb
+    environment:
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-rootpw}
+      - MARIADB_DATABASE=openflights
+      - MARIADB_USER=${MARIADB_USER:-app}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD:-apppw}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  columnstore:
+    image: mariadb/columnstore:11.4
+    container_name: mariadb-columnstore
+    profiles: ["columnstore"]
+    environment:
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-rootpw}
+      - MARIADB_DATABASE=openflights
+      - MARIADB_USER=${MARIADB_USER:-app}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD:-apppw}
+    ports:
+      - "3307:3306"
+    volumes:
+      - columnstore_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # Minimal Galera 3-node cluster (optional) for HA demo
+  galera-node1:
+    image: mariadb:11.4
+    container_name: galera-node1
+    profiles: ["galera"]
+    environment:
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-rootpw}
+      - MARIADB_DATABASE=openflights
+      - MARIADB_USER=${MARIADB_USER:-app}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD:-apppw}
+      - MARIADB_GALERA_CLUSTER_NAME=openflights-galera
+      - MARIADB_GALERA_CLUSTER_ADDRESS=gcomm://galera-node1,galera-node2,galera-node3
+      - MARIADB_GALERA_NODE_ADDRESS=galera-node1
+      - MARIADB_GALERA_NODE_NAME=galera-node1
+      - MARIADB_GALERA_BOOTSTRAP=yes
+    ports:
+      - "3308:3306"
+    volumes:
+      - galera1_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  galera-node2:
+    image: mariadb:11.4
+    container_name: galera-node2
+    profiles: ["galera"]
+    environment:
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-rootpw}
+      - MARIADB_DATABASE=openflights
+      - MARIADB_USER=${MARIADB_USER:-app}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD:-apppw}
+      - MARIADB_GALERA_CLUSTER_NAME=openflights-galera
+      - MARIADB_GALERA_CLUSTER_ADDRESS=gcomm://galera-node1,galera-node2,galera-node3
+      - MARIADB_GALERA_NODE_ADDRESS=galera-node2
+      - MARIADB_GALERA_NODE_NAME=galera-node2
+    ports:
+      - "3309:3306"
+    volumes:
+      - galera2_data:/var/lib/mysql
+    depends_on:
+      - galera-node1
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  galera-node3:
+    image: mariadb:11.4
+    container_name: galera-node3
+    profiles: ["galera"]
+    environment:
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-rootpw}
+      - MARIADB_DATABASE=openflights
+      - MARIADB_USER=${MARIADB_USER:-app}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD:-apppw}
+      - MARIADB_GALERA_CLUSTER_NAME=openflights-galera
+      - MARIADB_GALERA_CLUSTER_ADDRESS=gcomm://galera-node1,galera-node2,galera-node3
+      - MARIADB_GALERA_NODE_ADDRESS=galera-node3
+      - MARIADB_GALERA_NODE_NAME=galera-node3
+    ports:
+      - "3310:3306"
+    volumes:
+      - galera3_data:/var/lib/mysql
+    depends_on:
+      - galera-node1
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  mariadb_data: {}
+  columnstore_data: {}
+  galera1_data: {}
+  galera2_data: {}
+  galera3_data: {}
+
+
